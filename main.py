@@ -84,7 +84,7 @@ def amount_per_month(dated_messages):
 	nb_per_month = collections.OrderedDict(sorted(nb_per_month.items()))
 	return nb_per_month
 
-def plot_month_frequency(nb_per_month, chat_name):
+def plot_month_frequency(nb_per_month, chat_name, sender=None):
 	keys = list(nb_per_month.keys())
 	values = list(nb_per_month.values())
 
@@ -99,10 +99,16 @@ def plot_month_frequency(nb_per_month, chat_name):
 	plt.ylabel("Number of messages/media sent")
 	plt.xticks(rotation=65)
 	plt.plot(xaxis, values)
-	plt.title("Sending activity across time")
+	title = "Sending activity across time"
+	if sender != None:
+		title += " ({})".format(sender)
+	plt.title(title)
 	plt.legend(["all", "messages", "media"])
 	plt.gcf().set_size_inches(16, 9)
-	save_figure(chat_name, "activity_across_time")
+	fig_name = "activity_across_time"
+	if sender != None:
+		fig_name += "_{}".format(sender)
+	save_figure(chat_name, fig_name)
 	plt.show()
 
 def plot_sender_stats(dated_messages, chat_name):
@@ -160,6 +166,18 @@ def save_figure(chat_name, fig_name):
 
 	plt.savefig("{}/{}_{}".format(OUTPUT_DIR, chat_name, fig_name))
 
+def isolate_messages_per_sender(dated_messages):
+	senders = set()
+	for (_, sender, _) in dated_messages:
+		if sender == SENDER_UNKNOWN:
+			continue
+		senders.add(sender)
+
+	messages_per_senders = {}
+	for sender in senders:
+		messages_per_senders[sender] = [(d, s, msg) for (d, s, msg) in dated_messages if s == sender]
+	return messages_per_senders
+
 def is_media(message):
 	return message == MEDIA_OMITTED_MESSAGE
 
@@ -171,10 +189,22 @@ def print_dated_messages(dated_messages):
 
 def main():
 	chat_name = "Neuer"
+
+	# Convert txt file to list of tuples
 	dated_messages = convert_file_to_list(chat_name)
 	dated_messages = convert_dates(dated_messages)
+	
+	# Compute activity per month (and per sender)
 	nb_per_month = amount_per_month(dated_messages)
+	messages_per_senders = isolate_messages_per_sender(dated_messages)
+	nb_per_month_per_sender = {}
+	for sender, messages in messages_per_senders.items():
+		nb_per_month_per_sender[sender] = amount_per_month(messages)
+	
+	# Plot
 	plot_month_frequency(nb_per_month, chat_name)
+	for sender in list(messages_per_senders.keys()):
+		plot_month_frequency(nb_per_month_per_sender[sender], chat_name, sender=sender)
 	plot_sender_stats(dated_messages, chat_name)
 
 main()
