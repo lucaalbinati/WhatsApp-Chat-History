@@ -161,10 +161,11 @@ def plot_sender_stats(dated_messages, chat_name):
 	plt.show()
 
 def save_figure(chat_name, fig_name):
-	if not os.path.exists(OUTPUT_DIR):
-		os.makedirs(OUTPUT_DIR)
+	dir_name = "{}/{}".format(OUTPUT_DIR, chat_name)
+	if not os.path.exists(dir_name):
+		os.makedirs(dir_name)
 
-	plt.savefig("{}/{}_{}".format(OUTPUT_DIR, chat_name, fig_name))
+	plt.savefig("{}/{}".format(dir_name, fig_name))
 
 def isolate_messages_per_sender(dated_messages):
 	senders = set()
