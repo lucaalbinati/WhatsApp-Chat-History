@@ -8,6 +8,8 @@ import collections
 DATE_MESSAGE_SEPARATOR = " - "
 DATE_REGEX = r"^([0]{0,1}[1-9]|1[012])\/([1-9]|([012][0-9])|(3[01]))\/\d\d,\s([0-1]?[0-9]|2?[0-3]):([0-5]\d)$"
 SENDER_MESSAGE_SEPARATOR = ": "
+MEDIA_OMITTED_MESSAGE = "<Media omitted>\n"
+SENDER_UNKNOWN = "Unknown"
 
 def convert_file_to_list(path):
 	# return list of tuple: (date, sender, message)
@@ -42,30 +44,37 @@ def convert_file_to_list(path):
 			else:
 				curr_message += line
 		except ValueError as e:
-			if "substring not found" in str(e):
-				curr_message += line
-			else:
-				raise e
+			continue
 
 	f.close()
 	return dated_messages
 
 def convert_dates(dated_messages):
-	for i, (date_str, message) in enumerate(dated_messages):
+	for i, (date_str, sender, message) in enumerate(dated_messages):
 		date = parser.parse(date_str)
-		dated_messages[i] = (date, message)
+		dated_messages[i] = (date, sender, message)
 	return dated_messages
 
 def amount_per_month(dated_messages):
-	# return dict with key=(month,year) and value=amount
+	# return dict with key=(month,year) and value=(nb_all, nb_messages, nb_media)
 
 	nb_per_month = {}
-	for (date, _) in dated_messages:
+	for (date, _, message) in dated_messages:
 		month_year = datetime(year=date.year, month=date.month, day=1)
 		if month_year in nb_per_month:
-			nb_per_month[month_year] += 1
+			prev_nb_all = nb_per_month[month_year][0]
+			prev_nb_messages = nb_per_month[month_year][1]
+			prev_nb_media = nb_per_month[month_year][2]
+
+			if is_media(message):
+				nb_per_month[month_year] = (prev_nb_all + 1, prev_nb_messages, prev_nb_media + 1)
+			else:
+				nb_per_month[month_year] = (prev_nb_all + 1, prev_nb_messages + 1, prev_nb_media)
 		else:
-			nb_per_month[month_year] = 1
+			if is_media(message):
+				nb_per_month[month_year] = (1, 0, 1)
+			else:
+				nb_per_month[month_year] = (1, 1, 0)
 
 	# order it
 	nb_per_month = collections.OrderedDict(sorted(nb_per_month.items()))
@@ -83,10 +92,50 @@ def plot_month_frequency(nb_per_month):
 	ax.xaxis.set_ticks(key_ticks)
 
 	plt.xlabel("Date (month/year)")
-	plt.ylabel("Number of messages sent")
+	plt.ylabel("Number of messages/media sent")
 	plt.xticks(rotation=65)
 	plt.plot(xaxis, values)
+	plt.title("Sending activity across time")
+	plt.legend(["all", "messages", "media"])
 	plt.show()
+
+def plot_sender_stats(dated_messages):
+	# dict with key=sender, value=(nb_messages, nb_media)
+	sender_stats = {}
+
+	for (_, sender, message) in dated_messages:
+		if sender == SENDER_UNKNOWN:
+			continue
+
+		if sender in sender_stats:
+			prev_nb_messages = sender_stats[sender][0]
+			prev_nb_media = sender_stats[sender][1]
+			if is_media(message):
+				sender_stats[sender] = (prev_nb_messages, prev_nb_media + 1)
+			else:
+				sender_stats[sender] = (prev_nb_messages + 1, prev_nb_media)
+		else:
+			if is_media(message):
+				sender_stats[sender] = (0, 1)
+			else:
+				sender_stats[sender] = (1, 0)
+
+	for sender, (nb_messages, nb_media) in sender_stats.items():
+		print("{}: {} messages sent, {} media sent".format(sender, nb_messages, nb_media))
+
+	senders = list(sender_stats.keys())
+	values = list(sender_stats.values())
+	nb_messages = [v[0] for v in values]
+	nb_media = [v[1] for v in values]
+
+	plt.bar(senders, nb_messages)
+	plt.bar(senders, nb_media)
+	plt.title("Overall sending activity")
+	plt.legend(["messages sent", "media sent"])
+	plt.show()
+
+def is_media(message):
+	return message == MEDIA_OMITTED_MESSAGE
 
 def print_dated_messages(dated_messages):
 	for (date, sender, msg) in dated_messages:
@@ -99,6 +148,7 @@ def main():
 	dated_messages = convert_dates(dated_messages)
 	nb_per_month = amount_per_month(dated_messages)
 	plot_month_frequency(nb_per_month)
+	plot_sender_stats(dated_messages)
 
 main()
 
