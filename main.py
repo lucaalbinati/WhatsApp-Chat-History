@@ -1,9 +1,10 @@
-from dateutil import parser
-from datetime import datetime
+import os
+import collections
 import re
 import matplotlib.pyplot as plt
 import matplotlib
-import collections
+from dateutil import parser
+from datetime import datetime
 
 DATE_MESSAGE_SEPARATOR = " - "
 DATE_REGEX = r"^([0]{0,1}[1-9]|1[012])\/([1-9]|([012][0-9])|(3[01]))\/\d\d,\s([0-1]?[0-9]|2?[0-3]):([0-5]\d)$"
@@ -11,10 +12,13 @@ SENDER_MESSAGE_SEPARATOR = ": "
 MEDIA_OMITTED_MESSAGE = "<Media omitted>\n"
 SENDER_UNKNOWN = "Unknown"
 
-def convert_file_to_list(path):
+DATA_DIR = "data"
+OUTPUT_DIR = "output"
+
+def convert_file_to_list(chat_name):
 	# return list of tuple: (date, sender, message)
 
-	f = open(path, 'r')
+	f = open("{}/{}.txt".format(DATA_DIR, chat_name), 'r')
 	lines = f.readlines()
 
 	dated_messages = []
@@ -80,7 +84,7 @@ def amount_per_month(dated_messages):
 	nb_per_month = collections.OrderedDict(sorted(nb_per_month.items()))
 	return nb_per_month
 
-def plot_month_frequency(nb_per_month):
+def plot_month_frequency(nb_per_month, chat_name):
 	keys = list(nb_per_month.keys())
 	values = list(nb_per_month.values())
 
@@ -97,9 +101,11 @@ def plot_month_frequency(nb_per_month):
 	plt.plot(xaxis, values)
 	plt.title("Sending activity across time")
 	plt.legend(["all", "messages", "media"])
+	plt.gcf().set_size_inches(16, 9)
+	save_figure(chat_name, "activity_across_time")
 	plt.show()
 
-def plot_sender_stats(dated_messages):
+def plot_sender_stats(dated_messages, chat_name):
 	# dict with key=sender, value=(nb_messages, nb_chars, nb_media)
 	sender_stats = {}
 
@@ -134,16 +140,25 @@ def plot_sender_stats(dated_messages):
 	plt.bar(senders, nb_media)
 	plt.title("Overall sending activity")
 	plt.legend(["messages sent", "media sent"])
+	save_figure(chat_name, "overall_sending_activity")
 	plt.show()
 
 	plt.bar(senders, nb_chars)
 	plt.title("Overall characters sent")
+	save_figure(chat_name, "overall_characters_sent")
 	plt.show()
 
 	avg_chars_per_message = [nb_char/nb_message for nb_message, nb_char in zip(nb_messages, nb_chars)]
 	plt.bar(senders, avg_chars_per_message)
 	plt.title("Average messages' length")
+	save_figure(chat_name, "average_message_length")
 	plt.show()
+
+def save_figure(chat_name, fig_name):
+	if not os.path.exists(OUTPUT_DIR):
+		os.makedirs(OUTPUT_DIR)
+
+	plt.savefig("{}/{}_{}".format(OUTPUT_DIR, chat_name, fig_name))
 
 def is_media(message):
 	return message == MEDIA_OMITTED_MESSAGE
@@ -155,11 +170,12 @@ def print_dated_messages(dated_messages):
 		print(msg)
 
 def main():
-	dated_messages = convert_file_to_list("data/Neuer.txt")
+	chat_name = "Neuer"
+	dated_messages = convert_file_to_list(chat_name)
 	dated_messages = convert_dates(dated_messages)
 	nb_per_month = amount_per_month(dated_messages)
-	plot_month_frequency(nb_per_month)
-	plot_sender_stats(dated_messages)
+	plot_month_frequency(nb_per_month, chat_name)
+	plot_sender_stats(dated_messages, chat_name)
 
 main()
 
