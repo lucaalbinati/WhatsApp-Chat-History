@@ -100,7 +100,7 @@ def plot_month_frequency(nb_per_month):
 	plt.show()
 
 def plot_sender_stats(dated_messages):
-	# dict with key=sender, value=(nb_messages, nb_media)
+	# dict with key=sender, value=(nb_messages, nb_chars, nb_media)
 	sender_stats = {}
 
 	for (_, sender, message) in dated_messages:
@@ -109,29 +109,40 @@ def plot_sender_stats(dated_messages):
 
 		if sender in sender_stats:
 			prev_nb_messages = sender_stats[sender][0]
-			prev_nb_media = sender_stats[sender][1]
+			prev_nb_chars = sender_stats[sender][1]
+			prev_nb_media = sender_stats[sender][2]
 			if is_media(message):
-				sender_stats[sender] = (prev_nb_messages, prev_nb_media + 1)
+				sender_stats[sender] = (prev_nb_messages, prev_nb_chars, prev_nb_media + 1)
 			else:
-				sender_stats[sender] = (prev_nb_messages + 1, prev_nb_media)
+				sender_stats[sender] = (prev_nb_messages + 1, prev_nb_chars + len(message), prev_nb_media)
 		else:
 			if is_media(message):
-				sender_stats[sender] = (0, 1)
+				sender_stats[sender] = (0, 0, 1)
 			else:
-				sender_stats[sender] = (1, 0)
+				sender_stats[sender] = (1, len(message), 0)
 
-	for sender, (nb_messages, nb_media) in sender_stats.items():
-		print("{}: {} messages sent, {} media sent".format(sender, nb_messages, nb_media))
+	for sender, (nb_messages, nb_chars, nb_media) in sender_stats.items():
+		print("{}: {} messages sent ({} characters in total), {} media sent".format(sender, nb_messages, nb_chars, nb_media))
 
 	senders = list(sender_stats.keys())
 	values = list(sender_stats.values())
 	nb_messages = [v[0] for v in values]
-	nb_media = [v[1] for v in values]
+	nb_chars = [v[1] for v in values]
+	nb_media = [v[2] for v in values]
 
 	plt.bar(senders, nb_messages)
 	plt.bar(senders, nb_media)
 	plt.title("Overall sending activity")
 	plt.legend(["messages sent", "media sent"])
+	plt.show()
+
+	plt.bar(senders, nb_chars)
+	plt.title("Overall characters sent")
+	plt.show()
+
+	avg_chars_per_message = [nb_char/nb_message for nb_message, nb_char in zip(nb_messages, nb_chars)]
+	plt.bar(senders, avg_chars_per_message)
+	plt.title("Average messages' length")
 	plt.show()
 
 def is_media(message):
