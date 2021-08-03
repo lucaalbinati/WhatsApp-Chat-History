@@ -1,4 +1,5 @@
 import os
+import sys
 import collections
 import re
 import matplotlib.pyplot as plt
@@ -14,6 +15,23 @@ SENDER_UNKNOWN = "Unknown"
 
 DATA_DIR = "data"
 OUTPUT_DIR = "output"
+
+def verify_and_get_argument():
+	if len(sys.argv) < 2:
+		raise Exception("You must input the name of your WhatsApp group conversation")
+	elif len(sys.argv) > 2:
+		raise Exception("You must only input one WhatsApp group conversation name")
+
+	chat_name = sys.argv[1]
+	
+	if os.path.isfile("{}/{}".format(DATA_DIR, chat_name)):
+		if not chat_name.endswith(".txt"):
+			raise Exception("The file extension must be '.txt', instead found '{}'".format(chat_name[-4:]))
+		return chat_name[:chat_name.find('.txt')]
+	elif os.path.isfile("{}/{}.txt".format(DATA_DIR, chat_name)):
+		return chat_name
+	else:
+		raise Exception("Could not find file '{}/{}'".format(DATA_DIR, chat_name))
 
 def convert_file_to_list(chat_name):
 	# return list of tuple: (date, sender, message)
@@ -188,8 +206,8 @@ def print_dated_messages(dated_messages):
 		print(sender)
 		print(msg)
 
-def main():
-	chat_name = "Neuer"
+if __name__ == "__main__":
+	chat_name = verify_and_get_argument()
 
 	# Convert txt file to list of tuples
 	dated_messages = convert_file_to_list(chat_name)
@@ -207,6 +225,4 @@ def main():
 	for sender in list(messages_per_senders.keys()):
 		plot_month_frequency(nb_per_month_per_sender[sender], chat_name, sender=sender)
 	plot_sender_stats(dated_messages, chat_name)
-
-main()
 
